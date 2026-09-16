@@ -25,6 +25,9 @@ jobs:
         run: ruff check src/
 
       - name: Verify server module imports cleanly
+        env:
+          AUTH0_DOMAIN: example.us.auth0.com
+          MCP_RESOURCE_SERVER_URL: http://localhost:8000
         run: python -c "import sys; sys.path.insert(0, 'src'); import switchboard.server"
 
       - name: Docker build check
