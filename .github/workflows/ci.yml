@@ -19,6 +19,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          pip install -e .
           pip install ruff
 
       - name: Lint
@@ -26,9 +27,16 @@ jobs:
 
       - name: Verify server module imports cleanly
         env:
+          # Dummy values -- this step only proves the code constructs
+          # cleanly, it never talks to real Auth0. Real credentials are
+          # never present in CI.
           AUTH0_DOMAIN: example.us.auth0.com
           MCP_RESOURCE_SERVER_URL: http://localhost:8000
-        run: python -c "import sys; sys.path.insert(0, 'src'); import switchboard.server"
+        # No sys.path hack here on purpose -- this now exercises the same
+        # import path the real entrypoint uses, so a bug like "container
+        # can't find the switchboard package" fails here too, not just at
+        # docker compose up.
+        run: python -c "import switchboard.server"
 
       - name: Docker build check
         run: docker build -t switchboard-mcp:ci .
