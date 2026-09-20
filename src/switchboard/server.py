@@ -1,31 +1,43 @@
 """
 Switchboard MCP Server -- entry point.
 
-Stage 2 adds OAuth 2.1 resource-server auth: every request now needs a
-valid bearer token, issued by Auth0, carrying the `mcp:invoke` scope.
-This server never issues tokens or handles login itself -- it only ever
-validates tokens someone else (Auth0) already issued. See the two-auth-
-layers split in the project README for why that split exists.
+Stage 3 adds the first real tool integration: Postgres. Every tool below
+is registered here, in one place, with explicit annotations
+(readOnlyHint/destructiveHint/idempotentHint/openWorldHint) -- the MCP
+metadata that lets a calling agent (or a human approving its actions)
+reason about risk before invoking a tool, without having to read the
+tool's implementation. Most tutorial MCP servers skip this entirely;
+per the project README, it's one of the things this one does properly.
 """
 
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from switchboard.auth.scopes import MCP_INVOKE
 from switchboard.auth.token_validation import Auth0TokenVerifier
 from switchboard.core.config import settings
+from switchboard.core.lifespan import app_lifespan
+from switchboard.tools.postgres_tools import (
+    describe_table,
+    execute_write,
+    list_tables,
+    query_database,
+)
 
 mcp = FastMCP(
     name="switchboard",
     host=settings.switchboard_host,
     port=settings.switchboard_port,
+    
     token_verifier=Auth0TokenVerifier(),
     auth=AuthSettings(
         issuer_url=settings.issuer_url,
         resource_server_url=settings.mcp_resource_server_url,
         required_scopes=[MCP_INVOKE],
     ),
+    lifespan=app_lifespan,
 )
 
 
@@ -46,6 +58,15 @@ def whoami() -> str:
     if access_token is None:
         raise ValueError("No authenticated caller found")
     return f"Authenticated as: {access_token.client_id} (scopes: {', '.join(access_token.scopes)})"
+
+
+READ_ONLY = ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False)
+DESTRUCTIVE_WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
+
+mcp.tool(annotations=READ_ONLY)(query_database)
+mcp.tool(annotations=READ_ONLY)(list_tables)
+mcp.tool(annotations=READ_ONLY)(describe_table)
+mcp.tool(annotations=DESTRUCTIVE_WRITE)(execute_write)
 
 
 if __name__ == "__main__":
