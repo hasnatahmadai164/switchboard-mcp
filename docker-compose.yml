@@ -5,3 +5,30 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SWITCHBOARD_DB_READONLY_USER: ${SWITCHBOARD_DB_READONLY_USER}
+      SWITCHBOARD_DB_READONLY_PASSWORD: ${SWITCHBOARD_DB_READONLY_PASSWORD}
+      SWITCHBOARD_DB_WRITE_USER: ${SWITCHBOARD_DB_WRITE_USER}
+      SWITCHBOARD_DB_WRITE_PASSWORD: ${SWITCHBOARD_DB_WRITE_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
