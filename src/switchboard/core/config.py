@@ -17,20 +17,19 @@ class Settings(BaseSettings):
 
     switchboard_host: str = "0.0.0.0"
     switchboard_port: int = 8000
-
     auth0_domain: str
-
     mcp_resource_server_url: str = "http://localhost:8000"
-
     postgres_host: str = "postgres"
     postgres_port: int = 5432
     postgres_db: str = "switchboard"
-
 
     switchboard_db_readonly_user: str
     switchboard_db_readonly_password: str
     switchboard_db_write_user: str
     switchboard_db_write_password: str
+
+    pinecone_api_key: str
+    pinecone_embedding_model: str = "multilingual-e5-large"
 
     @property
     def issuer_url(self) -> str:
