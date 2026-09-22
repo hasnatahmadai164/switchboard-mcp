@@ -38,7 +38,11 @@ async def _embed(pinecone_client: AsyncPinecone, texts: list[str], input_type: s
 async def list_indexes(ctx: Context) -> list[str]:
     """List every Pinecone index in this project."""
     pc = ctx.request_context.lifespan_context.pinecone_client
-    return [index.name async for index in pc.indexes.list()]
+    # pc.indexes.list() is a coroutine in this SDK version (unlike the
+    # non-coroutine async-iterator it became in the docs' newer version) --
+    # await it, then read the names off the returned IndexList.
+    index_list = await pc.indexes.list()
+    return index_list.names()
 
 
 async def semantic_search(index_name: str, query: str, ctx: Context, top_k: int = 10) -> list[dict[str, Any]]:
@@ -82,6 +86,9 @@ async def upsert_documents(index_name: str, documents: list[dict[str, Any]], ctx
                 {
                     "id": doc["id"],
                     "values": vector,
+                    # Keeping the original text in metadata -- otherwise
+                    # a search result is just an id and a score, with
+                    # nothing readable to show for it.
                     "metadata": {k: v for k, v in doc.items() if k != "id"},
                 }
                 for doc, vector in zip(documents, vectors)
