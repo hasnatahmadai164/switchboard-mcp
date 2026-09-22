@@ -27,6 +27,9 @@ jobs:
 
       - name: Verify server module imports cleanly
         env:
+          # Dummy values -- this step only proves the code constructs
+          # cleanly, it never talks to real Auth0 or Postgres. Real
+          # credentials are never present in CI.
           AUTH0_DOMAIN: example.us.auth0.com
           MCP_RESOURCE_SERVER_URL: http://localhost:8000
           SWITCHBOARD_DB_READONLY_USER: ci_readonly
@@ -34,6 +37,13 @@ jobs:
           SWITCHBOARD_DB_WRITE_USER: ci_write
           SWITCHBOARD_DB_WRITE_PASSWORD: ci_write_pw
           PINECONE_API_KEY: ci_dummy_key
+          GOOGLE_CLIENT_ID: ci_dummy_client_id
+          GOOGLE_CLIENT_SECRET: ci_dummy_client_secret
+          GOOGLE_REFRESH_TOKEN: ci_dummy_refresh_token
+        # No sys.path hack here on purpose -- this now exercises the same
+        # import path the real entrypoint uses, so a bug like "container
+        # can't find the switchboard package" fails here too, not just at
+        # docker compose up.
         run: python -c "import switchboard.server"
 
       - name: Docker build check
