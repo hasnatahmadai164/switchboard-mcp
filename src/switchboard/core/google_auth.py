@@ -30,7 +30,9 @@ from switchboard.core.config import settings
 
 _TOKEN_URI = "https://oauth2.googleapis.com/token"
 
-
+# Must list every scope any Google tool needs -- Credentials.refresh()
+# uses this to validate the token still covers what's being requested.
+# Keep in sync with scripts/google_oauth_setup.py's SCOPES.
 _SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/gmail.readonly",
