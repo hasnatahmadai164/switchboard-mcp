@@ -58,14 +58,12 @@ mcp = FastMCP(
     name="switchboard",
     host=settings.switchboard_host,
     port=settings.switchboard_port,
-   
     token_verifier=Auth0TokenVerifier(),
     auth=AuthSettings(
         issuer_url=settings.issuer_url,
         resource_server_url=settings.mcp_resource_server_url,
         required_scopes=[MCP_INVOKE],
     ),
-
     lifespan=app_lifespan,
 )
 
@@ -85,7 +83,7 @@ def whoami() -> str:
     scope-checked by the auth middleware before this function ever ran."""
     access_token = get_access_token()
     if access_token is None:
-      
+
         raise ValueError("No authenticated caller found")
     return f"Authenticated as: {access_token.client_id} (scopes: {', '.join(access_token.scopes)})"
 
@@ -94,8 +92,11 @@ def whoami() -> str:
 READ_ONLY = ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False)
 
 DESTRUCTIVE_NONIDEMPOTENT = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
+
 DESTRUCTIVE_IDEMPOTENT = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False)
+
 DATA_MODIFYING_IDEMPOTENT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+
 DATA_MODIFYING_NONIDEMPOTENT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 
 mcp.tool(annotations=READ_ONLY)(query_database)
@@ -128,4 +129,5 @@ mcp.resource("switchboard://calendar/upcoming", mime_type="application/json")(up
 
 
 if __name__ == "__main__":
+
     mcp.run(transport="streamable-http")
