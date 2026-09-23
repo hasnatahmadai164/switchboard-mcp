@@ -8,22 +8,26 @@ URIs below are static, not templated) -- they're meant as always-
 available background context, not parameterized queries. A caller
 wanting a specific custom range still reaches for the list_events tool;
 this resource is just "what's coming up," no arguments needed.
+
+Neither function takes a `ctx: Context` parameter -- a confirmed
+upstream SDK bug rejects that for a static (non-templated) URI (see
+core/lifespan.py's get_app_context() docstring for the full story).
+Both read the shared AppContext from there instead.
 """
 
 import asyncio
 import json
 from datetime import datetime, timedelta, timezone
 
-from mcp.server.fastmcp import Context
-
+from switchboard.core.lifespan import get_app_context
 from switchboard.tools.calendar_tools import _list_events
 
 
-async def db_schema(ctx: Context) -> str:
+async def db_schema() -> str:
     """Live schema of every table in the public Postgres schema: each
     table's columns, with their data types and nullability. Reflects the
     database as it actually is right now, not a static snapshot."""
-    pool = ctx.request_context.lifespan_context.readonly_pool
+    pool = get_app_context().readonly_pool
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
@@ -41,11 +45,11 @@ async def db_schema(ctx: Context) -> str:
     return json.dumps(schema, indent=2)
 
 
-async def upcoming_calendar_events(ctx: Context) -> str:
+async def upcoming_calendar_events() -> str:
     """Events on the demo account's primary calendar over the next 7
     days. Reuses the same Calendar API call the list_events tool uses --
     one real implementation, not a duplicate."""
-    credentials = ctx.request_context.lifespan_context.google_credentials
+    credentials = get_app_context().google_credentials
     now = datetime.now(timezone.utc)
     time_min = now.isoformat()
     time_max = (now + timedelta(days=7)).isoformat()

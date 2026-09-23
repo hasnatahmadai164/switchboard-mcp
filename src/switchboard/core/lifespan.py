@@ -30,23 +30,39 @@ class AppContext:
     google_credentials: Credentials
 
 
+_app_context: AppContext | None = None
+
+
+def get_app_context() -> AppContext:
+    """Returns the AppContext built by app_lifespan. Only valid while the
+    server is running -- raises if called before startup or after
+    shutdown."""
+    if _app_context is None:
+        raise RuntimeError("App context not available -- app_lifespan hasn't started (or has already shut down).")
+    return _app_context
+
+
 @asynccontextmanager
 async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
-
+   
     readonly_pool = await asyncpg.create_pool(settings.postgres_readonly_dsn, min_size=1, max_size=5)
     write_pool = await asyncpg.create_pool(settings.postgres_write_dsn, min_size=1, max_size=5)
-  
+   
     pinecone_client = AsyncPinecone(api_key=settings.pinecone_api_key)
    
     google_credentials = build_google_credentials()
+    global _app_context
+    app_context = AppContext(
+        readonly_pool=readonly_pool,
+        write_pool=write_pool,
+        pinecone_client=pinecone_client,
+        google_credentials=google_credentials,
+    )
+    _app_context = app_context
     try:
-        yield AppContext(
-            readonly_pool=readonly_pool,
-            write_pool=write_pool,
-            pinecone_client=pinecone_client,
-            google_credentials=google_credentials,
-        )
+        yield app_context
     finally:
+        _app_context = None
         await pinecone_client.close()
         await write_pool.close()
         await readonly_pool.close()
