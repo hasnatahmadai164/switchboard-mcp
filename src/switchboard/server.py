@@ -1,16 +1,15 @@
 """
 Switchboard MCP Server -- entry point.
 
-Stage 7+8 add Calendar tools (reusing the Google credentials from
-Stage 5+6) and the server's first MCP Resources -- a distinct primitive
-from tools, read-only ambient context a client can load without
-invoking anything (see resources/resources.py). Every tool below is
-registered here, in one place, with explicit annotations
-(readOnlyHint/destructiveHint/idempotentHint/openWorldHint) -- the MCP
-metadata that lets a calling agent (or a human approving its actions)
-reason about risk before invoking a tool, without having to read the
-tool's implementation. Most tutorial MCP servers skip both of these
-entirely; per the project README, they're things this one does properly.
+Stage 9 adds the server's first MCP Prompts -- reusable message
+templates a client can request by name, the third primitive (alongside
+Resources) most tutorial servers skip entirely (see prompts/prompts.py).
+Every tool below is registered here, in one place, with explicit
+annotations (readOnlyHint/destructiveHint/idempotentHint/openWorldHint)
+-- the MCP metadata that lets a calling agent (or a human approving its
+actions) reason about risk before invoking a tool, without having to
+read the tool's implementation. Per the project README, these are all
+things most tutorial MCP servers skip.
 """
 
 from mcp.server.auth.middleware.auth_context import get_access_token
@@ -22,6 +21,7 @@ from switchboard.auth.scopes import MCP_INVOKE
 from switchboard.auth.token_validation import Auth0TokenVerifier
 from switchboard.core.config import settings
 from switchboard.core.lifespan import app_lifespan
+from switchboard.prompts.prompts import draft_follow_up_email, summarize_week_events
 from switchboard.resources.resources import db_schema, upcoming_calendar_events
 from switchboard.tools.calendar_tools import (
     check_availability,
@@ -53,11 +53,21 @@ from switchboard.tools.sheets_tools import (
     update_range,
 )
 
-
+# host is passed to the constructor (not just run()) on purpose: when this
+# runs behind Docker's network and binds 0.0.0.0, the SDK's DNS-rebinding
+# protection needs to know the real bind host up front, or it assumes
+# localhost and can reject legitimate requests. Cheap to get right now,
+# annoying to debug later.
 mcp = FastMCP(
     name="switchboard",
     host=settings.switchboard_host,
     port=settings.switchboard_port,
+    # token_verifier and auth always travel together -- the SDK raises at
+    # startup if only one is given, rather than silently running
+    # unauthenticated. Wiring these in is also what makes the SDK expose
+    # the RFC 9728 "protected resource metadata" endpoint and the
+    # WWW-Authenticate challenge header automatically -- we don't write
+    # any of that plumbing ourselves.
     token_verifier=Auth0TokenVerifier(),
     auth=AuthSettings(
         issuer_url=settings.issuer_url,
@@ -83,9 +93,9 @@ def whoami() -> str:
     scope-checked by the auth middleware before this function ever ran."""
     access_token = get_access_token()
     if access_token is None:
-
         raise ValueError("No authenticated caller found")
     return f"Authenticated as: {access_token.client_id} (scopes: {', '.join(access_token.scopes)})"
+
 
 
 
@@ -128,6 +138,10 @@ mcp.resource("switchboard://postgres/schema", mime_type="application/json")(db_s
 mcp.resource("switchboard://calendar/upcoming", mime_type="application/json")(upcoming_calendar_events)
 
 
-if __name__ == "__main__":
+mcp.prompt()(draft_follow_up_email)
+mcp.prompt()(summarize_week_events)
 
+
+if __name__ == "__main__":
+    
     mcp.run(transport="streamable-http")
