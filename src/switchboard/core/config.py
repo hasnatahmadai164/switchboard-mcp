@@ -34,12 +34,12 @@ class Settings(BaseSettings):
     switchboard_db_write_user: str
     switchboard_db_write_password: str
 
-
+    
     pinecone_api_key: str
-
+   
     pinecone_embedding_model: str = "multilingual-e5-large"
 
-
+    
     google_client_id: str
     google_client_secret: str
     google_refresh_token: str
