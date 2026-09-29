@@ -36,9 +36,11 @@ from switchboard.tools.gmail_tools import (
 )
 from switchboard.tools.pinecone_tools import (
     delete_vectors,
-    list_indexes as pinecone_list_indexes,
     semantic_search,
     upsert_documents,
+)
+from switchboard.tools.pinecone_tools import (
+    list_indexes as pinecone_list_indexes,
 )
 from switchboard.tools.postgres_tools import (
     describe_table,

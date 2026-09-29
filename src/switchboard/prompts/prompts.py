@@ -15,7 +15,7 @@ than a `ctx: Context` parameter, for consistency with that module.
 """
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from switchboard.core.lifespan import get_app_context
 from switchboard.tools.calendar_tools import _list_events
@@ -36,7 +36,7 @@ async def summarize_week_events() -> str:
     the next 7 days -- with the actual events already fetched and
     included, not just a generic instruction with nothing to work from."""
     credentials = get_app_context().google_credentials
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     time_min = now.isoformat()
     time_max = (now + timedelta(days=7)).isoformat()
     result = await asyncio.to_thread(_list_events, credentials, "primary", time_min, time_max, None)

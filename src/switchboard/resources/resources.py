@@ -17,7 +17,7 @@ Both read the shared AppContext from there instead.
 
 import asyncio
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from switchboard.core.lifespan import get_app_context
 from switchboard.tools.calendar_tools import _list_events
@@ -50,7 +50,7 @@ async def upcoming_calendar_events() -> str:
     days. Reuses the same Calendar API call the list_events tool uses --
     one real implementation, not a duplicate."""
     credentials = get_app_context().google_credentials
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     time_min = now.isoformat()
     time_max = (now + timedelta(days=7)).isoformat()
     result = await asyncio.to_thread(_list_events, credentials, "primary", time_min, time_max, None)
